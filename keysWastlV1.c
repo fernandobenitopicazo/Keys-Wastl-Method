@@ -23,7 +23,7 @@ It must be invoked using the following statement.
 ./keysWastl <DependenciesFileName> <MethodName> 
 */
 
-#include "keysWastl.h"
+#include "keysWastlV1.h"
 
 
 /* Reserved Words */
@@ -128,7 +128,7 @@ int main(int argc, char *argv[]) {
 	nombreFichero = argv[1];
 
 	// Name of the resulting keys file.
-	sprintf(ficheroClaves, "Claves%s", nombreFichero);
+	sprintf(ficheroClaves, "Keys-%s", nombreFichero);
 
 	/* Read the selected method. 
 	This is prepared for further development where other methods may be implemented.
