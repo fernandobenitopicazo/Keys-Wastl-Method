@@ -1,0 +1,30 @@
+Terrace
+Lively
+Views
+OS Lively Picturesque Moderate Terrace
+AC
+CS
+Expensive
+CS Quiet AC
+Moderate
+Picturesque
+Inexpensive
+CS Lively
+Lively Picturesque Terrace
+OS Moderate Views
+Lively Picturesque Moderate
+OS Views Terrace
+Quiet
+CS AC
+CS Picturesque AC
+Quiet Moderate
+CS Picturesque Moderate
+Quiet AC
+CS Lively
+Inexpensive
+CS Lively Inexpensive Terrace
+AC
+CS Lively Inexpensive AC
+Terrace
+OS
+Lively Picturesque Moderate Views Terrace
