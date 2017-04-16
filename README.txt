@@ -25,11 +25,15 @@ https://github.com/fernandobenitopicazo/Keys-Wastl-Method/
 
 Source Files:
 
-Main file: keysWastl.c
-Headers file: keysWastl.h
-Functions and procedures file: keysWastlLibrary.c
+Main file: keysWastlV1.c
+Headers file: keysWastlV1.h
+Functions and procedures file: keysWastlLibraryV1.c
 
-Executable file: keysWastl
+Executable file: keysWastlV1
+
+In order to get this executable file we recommend to use the 'makefile' file. 
+In any event, having gcc compiler installed, we can also run the following command to get the executable file:
+gcc -g -o keysWastlV1 keysWastlV1.c keysWastlLibraryV1.c
 
 --------------------------
 
