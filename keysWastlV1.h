@@ -16,6 +16,8 @@ Lab 3.3.11
 HEADERS FILE
 */
 
+#ifndef KEYSWASTLV1_H
+#define KEYSWASTLV1_H
 
 /* Types and Headers file */
 #define CELLSIZE 30
@@ -78,6 +80,8 @@ struct dependenciesList * insertKey (struct dependenciesList *, struct dependenc
 int includeIn (struct nodesList *, struct nodesList *);
 void wastlK1InferenceRule (struct dependenciesList *, struct dependenciesList *, struct nodesList *);
 void saveAlgorithmData (char *);
+
+#endif // KEYSWASTLV1_H
 
 
 // =====================================================
