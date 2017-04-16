@@ -22,22 +22,27 @@ Main file of the software containing the main procedure.
 It must be invoked using the following statement.
 ./keysWastl <DependenciesFileName> <MethodName> 
 */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <time.h>
 
 #include "keysWastlV1.h"
 
 
 /* Reserved Words */
-char VALORNULO[NOMBREFICHERO] = "NULO\n";
+char NULLVALUE[FILENAME] = "NULO\n";
 
 
 /* Global variables */
-char ficheroClaves[NOMBREFICHERO]; // = "experimentKeys.txt";
-struct listaDependencias * listaClaves = NULL;
+char keysFile[FILENAME]; // = "experimentKeys.txt";
+struct dependenciesList * keysList = NULL;
 
-FILE * ficheroSalida;
+FILE * outputFile;
 
 // Counter
-float tiempoEjecucion = 0.0;
+float runningTime = 0.0;
 
 
 /*
@@ -47,24 +52,22 @@ float tiempoEjecucion = 0.0;
 
 
 /* Global variables of main file */
-char * nombreFichero = NULL;
-char * nombreMetodo = NULL;
+char * fileIdentifier = NULL;
+char * methodIdentifier = NULL;
 
 
-struct listaDependencias * lista;
-struct listaDependencias * listaDepWastl = NULL;
-struct listaDependencias * nodo = NULL;
-struct listaNodos * L = NULL;
+struct dependenciesList * list;
+struct dependenciesList * wastlDependenciesList = NULL;
+struct dependenciesList * node = NULL;
+struct nodesList * L = NULL;
 
-clock_t inicio, fin;
+clock_t initialTime, endTime;
 
 
 
 /* Headers of the main file. */
-void wastlPuro ();
-void leerInformacionFicherosWastl ();
-
-void liberarMemoria ();
+void pureWastl ();
+void freeMemory ();
 
 
 
@@ -73,36 +76,36 @@ void liberarMemoria ();
 // =======================================================
 
 
-void wastlPuro () {
+void pureWastl () {
 	printf("--------------------------------------\n");
 	printf("WASTL\n");
 	printf("---------\n");
-	// Creamos la lista de DFs desde el fichero
-	lista = crearListaDependenciasDesdeFichero (nombreFichero);
+	// generate the list of dependencies from file
+	list = createDependenciesListFromFile (fileIdentifier);
 	printf("List of dependencies\n");
 	printf("--------------------\n");
-	mostrarListaDependencias (lista);
-	listaDepWastl = generarDependenciasWastl (lista);
-	//listaDepWastl = reverse(listaDepWastl);
+	paintDependenciesList (list);
+	wastlDependenciesList = createDependenciesWastl (list);
+	//wastlDependenciesList = reverse(wastlDependenciesList);
 	printf("List of Wastl dependencies (UNIT)\n");
 	printf("---------------------------------\n");
-	mostrarListaDependencias (listaDepWastl);
+	paintDependenciesList (wastlDependenciesList);
 
 	printf("--------------------------------------\n");
-	nodo = raizTableaux (listaDepWastl);
+	node = rootTableaux (wastlDependenciesList);
 	printf("Root Tableaux (K2)\n");
-	mostrarListaDependencias (nodo);
+	paintDependenciesList (node);
 
 	printf("--------------------------------------\n");
 	printf("K1 Rule Wastl\n");
-	reglaK1Wastl (listaDepWastl, nodo, L);
+	wastlK1InferenceRule (wastlDependenciesList, node, L);
 
 	printf("--------------------------------------\n");
 	printf("--------------------------------------\n");
 	printf("----------- Wastl's Keys -------------\n");
 	printf("--------------------------------------\n");
 	printf("--------------------------------------\n");
-	mostrarListaDependencias (listaClaves);
+	paintDependenciesList (keysList);
 }
 
 // =============================================================
@@ -125,23 +128,23 @@ int main(int argc, char *argv[]) {
 	}
 
 	// Read the input file(functional dependencies).
-	nombreFichero = argv[1];
+	fileIdentifier = argv[1];
 
 	// Name of the resulting keys file.
-	sprintf(ficheroClaves, "Keys-%s", nombreFichero);
+	sprintf(keysFile, "Keys-%s", fileIdentifier);
 
 	/* Read the selected method. 
 	This is prepared for further development where other methods may be implemented.
 	*/
-	//metodo = (int) atoi(argv[2]);
-	nombreMetodo = argv[2];
+	//methodIdentifier = (int) atoi(argv[2]);
+	methodIdentifier = argv[2];
 		
 	// Timer begins
-	inicio = time (NULL);
+	initialTime = time (NULL);
 	
 	// Call the method for execution
-	if (strcmp (nombreMetodo, "keysWastl") == 0) {
-		wastlPuro ();
+	if (strcmp (methodIdentifier, "keysWastl") == 0) {
+		pureWastl ();
 	} else {
 		printf("--------------------------------------\n");
 		printf("--------------------------------------\n");
@@ -152,17 +155,17 @@ int main(int argc, char *argv[]) {
 	}
 
 	// Timer ends
-	fin = time (NULL);
-	tiempoEjecucion = (float) (fin-inicio);
+	endTime = time (NULL);
+	runningTime = (float) (endTime-initialTime);
 
-	printf("Time = %f secs\n", tiempoEjecucion);
-	printf("Number of keys = %d\n", longitudListaDependencias (listaClaves));
+	printf("Time = %f secs\n", runningTime);
+	printf("Number of keys = %d\n", sizeDepedenciesList (keysList));
 
 	// Write the output keys file.
-	escribirListaClavesFichero (listaClaves, ficheroClaves);
+	saveKeysListToFile (keysList, keysFile);
 
 	
-	liberarMemoria ();
+	freeMemory ();
 
 	//exit(0); 
 
@@ -175,12 +178,12 @@ int main(int argc, char *argv[]) {
 
 
 /* Free all remaining memory. */
-void liberarMemoria () {
-	liberarListaDependencias (lista);
-	liberarListaDependencias (nodo);
-	liberarListaNodos (L);	
-	liberarListaDependencias (listaDepWastl);	
-	liberarListaDependencias (listaClaves);
+void freeMemory () {
+	freeDependenciesList (list);
+	freeDependenciesList (node);
+	freeNodesList (L);	
+	freeDependenciesList (wastlDependenciesList);	
+	freeDependenciesList (keysList);
 }
 
 

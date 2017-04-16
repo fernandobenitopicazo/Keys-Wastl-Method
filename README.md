@@ -6,7 +6,7 @@ README FILE
 Fernando Benito-Picazo
 SICUMA Researching Group
 Computer Science Dpt.
-University of Málaga
+University of MÃ¡laga
 Spain
 Lab 3.3.11
 +(34) 952 137141
@@ -82,12 +82,4 @@ fbenito@lcc.uma.es
 ==================== End of File ====================
 =
 ======================================================
-
-
-
-
-
-
-
-
 

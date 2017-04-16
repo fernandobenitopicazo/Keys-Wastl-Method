@@ -18,20 +18,24 @@ FUNCTIONS AND PROCEDURES FILE
 
 
 /* Library file containing the implementation of all required procedures and functions. */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <time.h>
 
 #include "keysWastlV1.h"
 
 
-
 /* Reserved words. */
-extern char VALORNULO[NOMBREFICHERO];
+extern char NULLVALUE[FILENAME];
 
 
 /* Global variables (externs) */
-extern char ficheroClaves[NOMBREFICHERO];
-extern FILE * ficheroSalida;
-extern struct listaDependencias * listaClaves;
-extern float tiempoEjecucion;
+extern char keysFile[FILENAME];
+extern FILE * outputFile;
+extern struct dependenciesList * keysList;
+extern float runningTime;
 
 // -------------------------------------------------------
 // -------------------------------------------------------
@@ -40,13 +44,13 @@ extern float tiempoEjecucion;
 // -------------------------------------------------------
 
 /* Free the memory for the list of nodes. */
-void liberarListaNodos (struct listaNodos * lista) {
-	struct listaNodos * aux;
-	struct listaNodos * tmp;
+void freeNodesList (struct nodesList * list) {
+	struct nodesList * aux;
+	struct nodesList * tmp;
 
-	aux = lista;
+	aux = list;
 	while (aux != NULL) {
-		tmp = aux -> sig;
+		tmp = aux -> next;
 		free (aux);
 		aux = tmp;
 	}
@@ -55,14 +59,14 @@ void liberarListaNodos (struct listaNodos * lista) {
 
 
 /* Free the memory for the list of functional dependencies. */
-void liberarListaDependencias (struct listaDependencias * lista) {
-	struct listaDependencias * aux;
-	struct listaDependencias * tmp;
-	aux = lista;
+void freeDependenciesList (struct dependenciesList * list) {
+	struct dependenciesList * aux;
+	struct dependenciesList * tmp;
+	aux = list;
 	while (aux != NULL) {
-		tmp = aux -> sig;
-		liberarListaNodos (aux -> izq);
-		liberarListaNodos (aux -> dcha);
+		tmp = aux -> next;
+		freeNodesList (aux -> left);
+		freeNodesList (aux -> right);
 		free (aux);
 		aux = tmp;
 	}
@@ -70,23 +74,23 @@ void liberarListaDependencias (struct listaDependencias * lista) {
 
 
 /* Procedure for closing file. */
-void cerrarFichero (FILE * fichero) {
-	if(!fclose(fichero)) {
-		//printf("Fichero cerrado\n");
+void closeFile (FILE * file) {
+	if(!fclose(file)) {
+		//printf("File closed\n");
 	} else {
-		printf("Error al cerrar el fichero\n");
+		printf("Error close file\n");
 		exit(-1);	
 	}
 }
 
 
 /* Insert (at the beginning) a new node with the information of 'token' into the list of nodes 'list'.*/
-struct listaNodos * insertarNodo (struct listaNodos * lista, char * token) {
-	struct listaNodos * nodo = (struct listaNodos *) malloc (sizeof (struct listaNodos));	
-	strcpy (nodo -> cadena, token);
-	nodo -> sig = lista;
-	lista = nodo;
-	return lista;
+struct nodesList * insertNode (struct nodesList * list, char * token) {
+	struct nodesList * node = (struct nodesList *) malloc (sizeof (struct nodesList));	
+	strcpy (node -> stringChar, token);
+	node -> next = list;
+	list = node;
+	return list;
 }
 
 
@@ -96,34 +100,34 @@ The input file structure follows:
 - EVEN lines represent right-hand side of the functional dependency.
 That's why we use variable 'i' along with the module 2.
 Remember that 'i' begins at zero. */
-struct listaDependencias * crearListaDependenciasDesdeFichero (char * nombre) {
-	struct listaDependencias * lista = NULL;
-	struct listaNodos * listaIzq = NULL;
-	struct listaNodos * listaDcha = NULL;
+struct dependenciesList * createDependenciesListFromFile (char * name) {
+	struct dependenciesList * list = NULL;
+	struct nodesList * leftList = NULL;
+	struct nodesList * rightList = NULL;
 
-	FILE * fichero;
-	char aux[TAMDEPENDENCIA] = "";
+	FILE * auxFile;
+	char aux[DEPENDENCYSIZE] = "";
 	char * token; // = (char *) malloc(strlen(aux) * sizeof (char));
 	int i = 0;
 	
-	fichero = fopen (nombre, "r"); // Open the file
-	if (fichero) {
-		while (fgets (aux, TAMDEPENDENCIA, fichero) != NULL) {
+	auxFile = fopen (name, "r"); // Open the file
+	if (auxFile) {
+		while (fgets (aux, DEPENDENCYSIZE, auxFile) != NULL) {
 			if (i % 2 == 0) { // Left-Hand side
-				token = strtok (aux, DELIMITADOR);
-				listaIzq = insertarNodo (listaIzq, replace(token, "\n", ""));
-				while ((token = strtok (NULL, DELIMITADOR)) != NULL) {
-					listaIzq = insertarNodo (listaIzq, replace(token, "\n", ""));
+				token = strtok (aux, MARKER);
+				leftList = insertNode (leftList, replace(token, "\n", ""));
+				while ((token = strtok (NULL, MARKER)) != NULL) {
+					leftList = insertNode (leftList, replace(token, "\n", ""));
 				}
 			} else { // Right-Hand side
-				token = strtok (aux, DELIMITADOR);
-				listaDcha = insertarNodo (listaDcha, replace(token, "\n", ""));
-				while ((token = strtok (NULL, DELIMITADOR)) != NULL) {
-					listaDcha = insertarNodo (listaDcha, replace(token, "\n", ""));
+				token = strtok (aux, MARKER);
+				rightList = insertNode (rightList, replace(token, "\n", ""));
+				while ((token = strtok (NULL, MARKER)) != NULL) {
+					rightList = insertNode (rightList, replace(token, "\n", ""));
 				}				
-				lista = insertarDependencia (lista, listaIzq, listaDcha);			
-				listaIzq = NULL;
-				listaDcha = NULL;
+				list = insertDependency (list, leftList, rightList);			
+				leftList = NULL;
+				rightList = NULL;
 				token = NULL;
 			}						
 			i++;
@@ -132,35 +136,35 @@ struct listaDependencias * crearListaDependenciasDesdeFichero (char * nombre) {
 		printf("Error opening the file\n");
 		exit(-1);
 	}
-	cerrarFichero (fichero);
-	//printf("Longitud: %d\n",longitudListaDependencias(lista));
-	return lista;
+	closeFile (auxFile);
+	//printf("Size: %d\n",sizeDepedenciesList(list));
+	return list;
 }
 
 
 /* Insert a new functional dependency at the beginning of the list. */
-struct listaDependencias * insertarDependencia (struct listaDependencias * lista, struct listaNodos * parteIzq, struct listaNodos * parteDcha) {
-	struct listaDependencias * nueva; 
+struct dependenciesList * insertDependency (struct dependenciesList * list, struct nodesList * leftSide, struct nodesList * rightSide) {
+	struct dependenciesList * aux; 
 
-	if (parteIzq != NULL) { 
-		nueva = (struct listaDependencias *) malloc (sizeof (struct listaDependencias)); 
-		nueva -> izq = parteIzq;
-		nueva -> dcha = parteDcha;
-		nueva -> sig = lista;
-		lista = nueva;
+	if (leftSide != NULL) { 
+		aux = (struct dependenciesList *) malloc (sizeof (struct dependenciesList)); 
+		aux -> left = leftSide;
+		aux -> right = rightSide;
+		aux -> next = list;
+		list = aux;
 	}	
-	return lista;
+	return list;
 }
 
 
 
 /* Show the list of nodes 'list'. */
-void mostrarListaNodos (struct listaNodos * lista) {
-	char res[TAMDEPENDENCIA] = "";
-	struct listaNodos * aux = lista;
+void paintNodesList (struct nodesList * list) {
+	char res[DEPENDENCYSIZE] = "";
+	struct nodesList * aux = list;
 	while (aux != NULL) {
-		strcat(res, aux -> cadena);
-		aux = aux -> sig;
+		strcat(res, aux -> stringChar);
+		aux = aux -> next;
 	}
 	printf("Node: %s\n", res);
 }
@@ -168,33 +172,33 @@ void mostrarListaNodos (struct listaNodos * lista) {
 
 
 // Store in 'node' the content of 'list'.
-void obtenerNodo (char * nodo, struct listaNodos * lista) {
-	char res[TAMDEPENDENCIA] = "";
-	struct listaNodos * aux = lista;
+void getNode (char * nodo, struct nodesList * list) {
+	char res[DEPENDENCYSIZE] = "";
+	struct nodesList * aux = list;
 	while (aux != NULL) {
-		strcat(nodo, aux -> cadena);
-		aux = aux -> sig;
+		strcat(nodo, aux -> stringChar);
+		aux = aux -> next;
 	}
 }
 
 
 // Show the list of functional dependencies 'list'.
-void mostrarListaDependencias (struct listaDependencias * lista) {
-	struct listaDependencias * aux = lista;
-	char nodoIzq[TAMDEPENDENCIA] = "";
-	char nodoDcha[TAMDEPENDENCIA] = "";
+void paintDependenciesList (struct dependenciesList * list) {
+	struct dependenciesList * aux = list;
+	char nodoIzq[DEPENDENCYSIZE] = "";
+	char nodoDcha[DEPENDENCYSIZE] = "";
 
-	printf("Length of the list = %d\n", longitudListaDependencias(lista));
+	printf("Length of the list = %d\n", sizeDepedenciesList(list));
 
 	while (aux != NULL) {
-		obtenerNodo(nodoIzq, aux -> izq);
+		getNode(nodoIzq, aux -> left);
 		//printf("NODO IZQ: %s\n", nodoIzq);
-		obtenerNodo(nodoDcha, aux -> dcha);
+		getNode(nodoDcha, aux -> right);
 		//printf("NODO DCHA: %s\n", nodoDcha);
 		printf("DEP: %s -> %s\n", nodoIzq, nodoDcha);
 		memset(nodoIzq, 0, sizeof(nodoIzq));
 		memset(nodoDcha, 0, sizeof(nodoDcha));
-		aux = aux -> sig;
+		aux = aux -> next;
 	}
 }
 
@@ -202,7 +206,7 @@ void mostrarListaDependencias (struct listaDependencias * lista) {
 /* Replace 'orig' for 'repl' into 'st' string.
 For instance: replace("Hola mundo!", "mundo", "Fer") => Hola Fer! */
 char * replace (char * st, char * orig, char * repl) {
-	static char buffer[TAMDEPENDENCIA];
+	static char buffer[DEPENDENCYSIZE];
 	char * ch;
 	if (!(ch = strstr(st, orig)))
    		return st;
@@ -215,24 +219,24 @@ char * replace (char * st, char * orig, char * repl) {
 
 
 // Function that returns the number of FD in 'list'.
-int longitudListaDependencias (struct listaDependencias * lista) {
-	struct listaDependencias * aux = lista;
+int sizeDepedenciesList (struct dependenciesList * list) {
+	struct dependenciesList * aux = list;
 	int res = 0;
 	while (aux != NULL) {
 		res++;
-		aux = aux -> sig;
+		aux = aux -> next;
 	}
 	return res;
 }
 
 
 // Function that returns the number of nodes in 'list'.
-int longitudListaNodos (struct listaNodos * lista) {
-	struct listaNodos * aux = lista;
+int sizeNodesList (struct nodesList * list) {
+	struct nodesList * aux = list;
 	int res = 0;
 	while (aux != NULL) {
 		res++;
-		aux = aux -> sig;
+		aux = aux -> next;
 	}
 	return res;
 }
@@ -240,38 +244,38 @@ int longitudListaNodos (struct listaNodos * lista) {
 
 /* Check whether an element exists or not in the list of nodes 'list'. 
 * Return 1 if exists, 0 otherwise. */
-int esta (char * elem, struct listaNodos * lista) {
+int exists (char * elem, struct nodesList * list) {
 	int res = 0;
-	struct listaNodos * aux = lista;
+	struct nodesList * aux = list;
 	while (aux != NULL && !res) {
-		if (strcmp(elem, aux -> cadena) == 0) 
+		if (strcmp(elem, aux -> stringChar) == 0) 
 			res = 1; // See strcmp
-		aux = aux -> sig;
+		aux = aux -> next;
 	}
 	return res;
 }
 
 
 /* Return the element at the position 'pos' within the list of nodes 'list'. */
-char * buscarElemento (struct listaNodos * lista, int pos) {
-	struct listaNodos * aux = lista;
+char * findElement (struct nodesList * list, int pos) {
+	struct nodesList * aux = list;
 	int i = 0;
 	while (i != pos) {
 		i++; 
-		aux = aux -> sig;
+		aux = aux -> next;
 	}
-	return aux -> cadena;
+	return aux -> stringChar;
 }
 
 
-/* Return 1 if 'listBase' contains 'list',0 otherwise. */
-int contenida (struct listaNodos * lista, struct listaNodos * listaBase) {
-	struct listaNodos * aux = lista;
+/* Return 1 if 'baseList' contains 'list',0 otherwise. */
+int includeIn (struct nodesList * list, struct nodesList * baseList) {
+	struct nodesList * aux = list;
 	int res = 1;
 	while (aux != NULL && res) {
-		if (!esta (aux -> cadena, listaBase))
+		if (!exists (aux -> stringChar, baseList))
 			res = 0;
-		aux = aux -> sig;
+		aux = aux -> next;
 	}
 	return res;
 }
@@ -280,27 +284,26 @@ int contenida (struct listaNodos * lista, struct listaNodos * listaBase) {
 
 /* This function inserts the new superkey that comes at the input 'superKey' into the current list of keys 'list' .  
 */
-struct listaDependencias * insertarClave (struct listaDependencias * lista, struct listaDependencias * superClave) {
-	struct listaDependencias * aux;
+struct dependenciesList * insertKey (struct dependenciesList * list, struct dependenciesList * superKey) {
+	struct dependenciesList * aux;
 
-	
-	lista = insertarDependencia (lista, hacerCopiaL (superClave -> izq), hacerCopiaL (superClave -> dcha));
-	return lista;
+	list = insertDependency (list, makeCopyL (superKey -> left), makeCopyL (superKey -> right));
+	return list;
 }
 
 
 
 /* Return 1 if the insersection of 'L' and 'list' is void, 0 otherwise. */
-int interseccionVacia (struct listaNodos * L, struct listaNodos * lista) {
-	struct listaNodos * aux = lista;
+int voidIntersection (struct nodesList * L, struct nodesList * list) {
+	struct nodesList * aux = list;
 	int res = 1;
-	int encontrado = 0;
-	while (aux != NULL && !encontrado) {
-		if(esta(aux -> cadena, L)) {
-			encontrado = 1;
+	int flag = 0;
+	while (aux != NULL && !flag) {
+		if(exists(aux -> stringChar, L)) {
+			flag = 1;
 			res = 0;
 		}
-		aux = aux -> sig;
+		aux = aux -> next;
 	}
 	return res;
 }
@@ -308,16 +311,16 @@ int interseccionVacia (struct listaNodos * L, struct listaNodos * lista) {
 
 
 /* Write in 'name' file the list 'list'. It will be the resulting keys file. */
-void escribirListaClavesFichero (struct listaDependencias * lista, char * nombre) {
-	struct listaDependencias * aux = lista;
-	FILE * fichero;
+void saveKeysListToFile (struct dependenciesList * list, char * name) {
+	struct dependenciesList * aux = list;
+	FILE * auxFile;
 
-	fichero = fopen (nombre, "a");
+	auxFile = fopen (name, "a");
 	while (aux != NULL) { 
-		fputs(generarClaveSalida (aux), fichero);
-		aux = aux -> sig;
+		fputs(generateOutputKey (aux), auxFile);
+		aux = aux -> next;
 	}
-	cerrarFichero (fichero);
+	closeFile (auxFile);
 }
 
 
@@ -329,17 +332,17 @@ void escribirListaClavesFichero (struct listaDependencias * lista, char * nombre
 
 
 /* Remove the node containing 'elem' in he list of nodes 'list'.*/
-struct listaNodos * eliminarElemTableaux (struct listaNodos * lista, char * elem){
-	if (lista == NULL) {
-		return lista;
-	} else if (strcmp (lista -> cadena, elem) == 0) { // Found it
-		struct listaNodos * aux = lista -> sig;
-		free (lista); // Free node
-		lista = aux;
+struct nodesList * removeElemFromTableaux (struct nodesList * list, char * elem){
+	if (list == NULL) {
+		return list;
+	} else if (strcmp (list -> stringChar, elem) == 0) { // Found it
+		struct nodesList * aux = list -> next;
+		free (list); // Free node
+		list = aux;
 	} else { // Not found, recursive
-		lista -> sig = eliminarElemTableaux (lista -> sig, elem);
+		list -> next = removeElemFromTableaux (list -> next, elem);
 	}
-	return lista;
+	return list;
 }
 
 
@@ -349,35 +352,35 @@ It calculates the tableaux root.
 * - Wastl K2 inference rule -
 * EJ: A -> B, C -> D => AC -> D 
 */
-struct listaDependencias * raizTableaux(struct listaDependencias * lista) {
-	struct listaDependencias * aux = lista;
-	struct listaDependencias * res = NULL;
-	if (lista != NULL) {
-		res = (struct listaDependencias *) malloc (sizeof (struct listaDependencias));
-		res -> izq = NULL;	
-		res -> dcha = NULL;
+struct dependenciesList * rootTableaux(struct dependenciesList * list) {
+	struct dependenciesList * aux = list;
+	struct dependenciesList * res = NULL;
+	if (list != NULL) {
+		res = (struct dependenciesList *) malloc (sizeof (struct dependenciesList));
+		res -> left = NULL;	
+		res -> right = NULL;
 		while (aux != NULL) {
-			res -> izq = insertarElemParteTableaux (aux -> izq, res -> izq);
-			if (aux -> sig == NULL) 
-				res -> dcha = insertarElemParteTableaux (aux -> dcha, res -> dcha);
-			aux = aux -> sig;
+			res -> left = insertElemToTableaux (aux -> left, res -> left);
+			if (aux -> next == NULL) 
+				res -> right = insertElemToTableaux (aux -> right, res -> right);
+			aux = aux -> next;
 		}
-		res -> sig = NULL;
+		res -> next = NULL;
 	}
 	return res;
 }
 
 
 
-/* Insert into 'listaBase' the elements of 'listNew' avoiding duplicates. */
-struct listaNodos * insertarElemParteTableaux (struct listaNodos * listaNueva, struct listaNodos * listaBase) {
-	struct listaNodos * aux = listaNueva;
+/* Insert into 'baseList' the elements of 'listNew' avoiding duplicates. */
+struct nodesList * insertElemToTableaux (struct nodesList * newList, struct nodesList * baseList) {
+	struct nodesList * aux = newList;
 	while (aux != NULL) {
-		if (!esta (aux -> cadena, listaBase)) 
-			listaBase = insertarNodo (listaBase, aux -> cadena);
-		aux = aux -> sig;
+		if (!exists (aux -> stringChar, baseList)) 
+			baseList = insertNode (baseList, aux -> stringChar);
+		aux = aux -> next;
 	}
-	return listaBase;
+	return baseList;
 }
 
 
@@ -385,25 +388,25 @@ struct listaNodos * insertarElemParteTableaux (struct listaNodos * listaNueva, s
 /* IMPORTANT.
 This function returns the list of UNIT functional dependencies from the original list 'list'.
 * For instance: Let F = {A -> BC}, Wastl's method needs to convert F into: F = {A -> B y A -> C} */
-struct listaDependencias * generarDependenciasWastl (struct listaDependencias * lista) {
-	struct listaDependencias * aux = lista;
-	struct listaNodos * dcha = NULL;
-	struct listaNodos * nodo;
-	struct listaDependencias * res = NULL;
-	int longitud, i;
+struct dependenciesList * createDependenciesWastl (struct dependenciesList * list) {
+	struct dependenciesList * aux = list;
+	struct nodesList * right = NULL;
+	struct nodesList * node;
+	struct dependenciesList * res = NULL;
+	int size, i;
 
 	while (aux != NULL) {
-		longitud = longitudListaNodos (aux -> dcha);
-		if (longitud == 1) {
-			res = insertarDependencia (res, hacerCopiaL (aux -> izq), hacerCopiaL (aux -> dcha));	
+		size = sizeNodesList (aux -> right);
+		if (size == 1) {
+			res = insertDependency (res, makeCopyL (aux -> left), makeCopyL (aux -> right));	
 		} else {
-			for (i = 0; i < longitud; i++) {
-				dcha = insertarNodo (dcha, buscarElemento(aux -> dcha, i));
-				res = insertarDependencia (res, hacerCopiaL (aux -> izq), dcha);
-				dcha = NULL;
+			for (i = 0; i < size; i++) {
+				right = insertNode (right, findElement(aux -> right, i));
+				res = insertDependency (res, makeCopyL (aux -> left), right);
+				right = NULL;
 			}	
 		}
-		aux = aux -> sig;
+		aux = aux -> next;
 	}
 	return res;
 }
@@ -411,62 +414,62 @@ struct listaDependencias * generarDependenciasWastl (struct listaDependencias * 
 
 /* Receives the whole dependencies list 'lista', the current node of the tableaux 'tableaux' and the path list 'L'. 
 Returns: 1 is there exists any functional dependency that holds Wastl's K1 infer rule, 0 otherwise.*/
-int existenCandidatos (struct listaDependencias * lista, struct listaDependencias * tableaux, struct listaNodos * L) {
-	struct listaDependencias * aux = lista;
-	int encontrado = 0;
-	while (aux != NULL && !encontrado) {
-		if (esta (aux -> dcha -> cadena, tableaux -> izq) && (interseccionVacia (L, aux -> izq))) {
-			encontrado = 1;
+int existCandidates (struct dependenciesList * list, struct dependenciesList * tableaux, struct nodesList * L) {
+	struct dependenciesList * aux = list;
+	int flag = 0;
+	while (aux != NULL && !flag) {
+		if (exists (aux -> right -> stringChar, tableaux -> left) && (voidIntersection (L, aux -> left))) {
+			flag = 1;
 		}
-		aux = aux -> sig;
+		aux = aux -> next;
 	}
-	return encontrado;
+	return flag;
 }
 
 
-/* Function that receives a dependency 'dependencia', the current node of the tableaux 'tableaux' and the path list 'L'.
+/* Function that receives a dependency 'dependency', the current node of the tableaux 'tableaux' and the path list 'L'.
 Returns 1 if both following conditions hold:
-1.- Right-hand side of 'dependencia' is included in 'tableaux'.
-2.- Left-hand side of 'dependencia' is NOT already in 'L'.
+1.- Right-hand side of 'dependency' is included in 'tableaux'.
+2.- Left-hand side of 'dependency' is NOT already in 'L'.
 Returns 0 if any prior conditions fail.*/
-int esCandidato(struct listaDependencias * dependencia, struct listaDependencias * tableaux, struct listaNodos * L) {
+int isCandidate(struct dependenciesList * dependency, struct dependenciesList * tableaux, struct nodesList * L) {
 	
-	return (esta(dependencia -> dcha -> cadena, tableaux -> izq) && (interseccionVacia(L, dependencia -> izq)));
+	return (exists(dependency -> right -> stringChar, tableaux -> left) && (voidIntersection(L, dependency -> left)));
 }
 
 
 
 /* Function that returns a copy allocated in its own memory of the tableaux that receives as input.*/
-struct listaDependencias * hacerCopiaTableaux (struct listaDependencias * lista) {	
-	struct listaDependencias * res = NULL;
-	struct listaNodos * resIzq = NULL;
-	struct listaNodos * resDcha = NULL;
+struct dependenciesList * makeCopyTableaux (struct dependenciesList * list) {	
+	struct dependenciesList * res = NULL;
+	struct nodesList * resLeft = NULL;
+	struct nodesList * resRight = NULL;
 
 	// Left-hand side
-	struct listaNodos * aux = lista -> izq;
+	struct nodesList * aux = list -> left;
 	while (aux != NULL) {
-		resIzq = insertarNodo (resIzq, aux -> cadena);
-		aux = aux -> sig;
+		resLeft = insertNode (resLeft, aux -> stringChar);
+		aux = aux -> next;
 	}
 	// Right-hand side
-	aux = lista -> dcha;
+	aux = list -> right;
 	while (aux != NULL) {
-		resDcha = insertarNodo (resDcha, aux -> cadena);
-		aux = aux -> sig;
+		resRight = insertNode (resRight, aux -> stringChar);
+		aux = aux -> next;
 	}
-	res = insertarDependencia (res, resIzq, resDcha);
+	res = insertDependency (res, resLeft, resRight);
 	return res;
 }
 
 
 /* Function that returns a copy allocated in its own memory of the list of nodes that receives as input.*/
-struct listaNodos * hacerCopiaL (struct listaNodos * lista) {
-	struct listaNodos * res = NULL;
-	struct listaNodos * aux = lista;
-	if (lista != NULL) {
+struct nodesList * makeCopyL (struct nodesList * list) {
+	struct nodesList * res = NULL;
+	struct nodesList * aux = list;
+	if (list != NULL) {
 		while (aux != NULL) {
-			res = insertarNodo (res, aux -> cadena);
-			aux = aux -> sig;
+			res = insertNode (res, aux -> stringChar);
+			aux = aux -> next;
 		}
 	}	
 	return res;
@@ -479,56 +482,56 @@ struct listaNodos * hacerCopiaL (struct listaNodos * lista) {
 This procedure is responsible for building the tableaux tree by applying Wastl's K1 infer rule successively.
 - Wastl K1 infer rule -
 x -> A, YA -> B  => XY -> B.
-When we reach to a node that cannot expand any more, it means we reached a leaf of the tableaux tree, i.e. a key of the relation. Therefore, we save it in the list of keys by applying the function 'insertarClave'.
-Cada vez que llegamos a un nodo que ya no se puede seguir expandiendo, utiliza el procedimiento 'generarClaveSalida' para escribir en fichero la parte izquierda del Tableaux actual, que se corresponderá con una Clave. */
-void reglaK1Wastl (struct listaDependencias * lista, struct listaDependencias * tableaux, struct listaNodos * L) {
+When we reach to a node that cannot expand any more, it means we reached a leaf of the tableaux tree, i.e. a key of the relation. Therefore, we save it in the list of keys by applying the function 'insertKey'.
+Once we reach a node that cannot be expanded, it uses the procedure called 'generateOutputKey' in order to save in 'auxFile' the left-hand side of the current tableaux, i.e. a key. */
+void wastlK1InferenceRule (struct dependenciesList * list, struct dependenciesList * tableaux, struct nodesList * L) {
 	
-	struct listaDependencias * aux;
-	struct listaDependencias * auxTableaux;
-	struct listaNodos * auxL;
+	struct dependenciesList * aux;
+	struct dependenciesList * auxTableaux;
+	struct nodesList * auxL;
 
-	if (lista == NULL) {
+	if (list == NULL) {
 		// Nothing
-	} else if (!existenCandidatos (lista, tableaux, L)) {
+	} else if (!existCandidates (list, tableaux, L)) {
 		// We reached a leaf of the tree, i.e. a key.
-		listaClaves = insertarClave (listaClaves, tableaux);
+		keysList = insertKey (keysList, tableaux);
 	} else {
-		aux = lista;
+		aux = list;
 		while (aux != NULL) {
-			if (esCandidato (aux, tableaux, L)) {
+			if (isCandidate (aux, tableaux, L)) {
 				// We save a copy of tableaux and L
-				auxTableaux = hacerCopiaTableaux (tableaux);
-				auxL = hacerCopiaL (L);	
-				auxTableaux -> izq = eliminarElemTableaux (auxTableaux -> izq, aux -> dcha -> cadena);
-				auxL = insertarNodo (auxL, aux -> dcha -> cadena);
+				auxTableaux = makeCopyTableaux (tableaux);
+				auxL = makeCopyL (L);	
+				auxTableaux -> left = removeElemFromTableaux (auxTableaux -> left, aux -> right -> stringChar);
+				auxL = insertNode (auxL, aux -> right -> stringChar);
 				
-				reglaK1Wastl (lista, auxTableaux, auxL);
-				liberarListaDependencias (auxTableaux);
-				liberarListaNodos (auxL);
+				wastlK1InferenceRule (list, auxTableaux, auxL);
+				freeDependenciesList (auxTableaux);
+				freeNodesList (auxL);
 				auxTableaux = NULL;
 				auxL = NULL;
 			}
-			aux = aux -> sig;
+			aux = aux -> next;
 		}
 	}
 }
 
 
-/* Function that receives a dependency 'lista' and returns a pointer to string filled with the left-hand side of the dependency. In short, this function is meant to generate and return the key within the input dependency, i.e. its left-hand side.*/
-char * generarClaveSalida (struct listaDependencias * lista) {
-	static char res[TAMDEPENDENCIA] = "";
+/* Function that receives a dependency 'list' and returns a pointer to string filled with the left-hand side of the dependency. In short, this function is meant to generate and return the key within the input dependency, i.e. its left-hand side.*/
+char * generateOutputKey (struct dependenciesList * list) {
+	static char res[DEPENDENCYSIZE] = "";
 	memset(res, 0, sizeof(res));
-	if (lista != NULL) {
-		struct listaNodos * aux = lista -> izq;
-		while (aux -> sig != NULL) {
-			strcat(res, aux -> cadena);
+	if (list != NULL) {
+		struct nodesList * aux = list -> left;
+		while (aux -> next != NULL) {
+			strcat(res, aux -> stringChar);
 			strcat(res, " ");
-			aux = aux -> sig;
+			aux = aux -> next;
 		}
-		strcat(res, aux -> cadena);
+		strcat(res, aux -> stringChar);
 		strcat(res, "\n");
 	} else {
-		strcat(res, VALORNULO);
+		strcat(res, NULLVALUE);
 	}
 	return res;
 }

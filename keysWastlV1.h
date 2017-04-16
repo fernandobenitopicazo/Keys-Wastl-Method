@@ -18,31 +18,24 @@ HEADERS FILE
 
 
 /* Types and Headers file */
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <time.h>
-
-#define TAMCELDA 30
-#define TAMDEPENDENCIA 1024
-#define DELIMITADOR " "
-#define NOMBREFICHERO 256
+#define CELLSIZE 30
+#define DEPENDENCYSIZE 1024
+#define MARKER " "
+#define FILENAME 256
 
 
 /* Data structures */
 // Node
-struct listaNodos {
-	char cadena[TAMCELDA];
-	struct listaNodos * sig;
+struct nodesList {
+	char stringChar[CELLSIZE];
+	struct nodesList * next;
 };
 
 // Functional dependency, FD.
-struct listaDependencias {
-	struct listaNodos * izq;
-	struct listaNodos * dcha;
-	struct listaDependencias * sig;
+struct dependenciesList {
+	struct nodesList * left;
+	struct nodesList * right;
+	struct dependenciesList * next;
 };
 
 
@@ -53,36 +46,38 @@ struct listaDependencias {
 // ------------------- WASTL and SHARED ------------------
 // -------------------------------------------------------
 
-struct listaDependencias * hacerCopiaListaDepedencias (struct listaDependencias * );
-struct listaDependencias * reverse (struct listaDependencias *);
-void liberarListaNodos (struct listaNodos *);
-void liberarListaDependencias (struct listaDependencias *);
-void cerrarFichero(FILE *);
-struct listaNodos * insertarNodo (struct listaNodos *, char *);
-struct listaNodos * insertarListaNodos (struct listaNodos *, struct listaNodos *);
-struct listaDependencias * crearListaDependenciasDesdeFichero (char *);
-struct listaDependencias * generarDependenciasWastl(struct listaDependencias *);
-void obtenerNodo(char *, struct listaNodos *);
-void mostrarListaNodos (struct listaNodos *);
-void mostrarListaDependencias (struct listaDependencias *);
-struct listaDependencias * insertarDependencia (struct listaDependencias *, struct listaNodos *, struct listaNodos *);
-struct listaDependencias * raizTableaux (struct listaDependencias *);
+struct dependenciesList * makeCopyDependenciesList (struct dependenciesList * );
+struct dependenciesList * reverse (struct dependenciesList *);
+void freeNodesList (struct nodesList *);
+void freeDependenciesList (struct dependenciesList *);
+void closeFile(FILE *);
+struct nodesList * insertNode (struct nodesList *, char *);
+struct nodesList * insertNodeList (struct nodesList *, struct nodesList *);
+struct dependenciesList * createDependenciesListFromFile (char *);
+struct dependenciesList * createDependenciesWastl(struct dependenciesList *);
+void getNode(char *, struct nodesList *);
+void paintNodesList (struct nodesList *);
+void paintDependenciesList (struct dependenciesList *);
+struct dependenciesList * insertDependency (struct dependenciesList *, struct nodesList *, struct nodesList *);
+struct dependenciesList * rootTableaux (struct dependenciesList *);
 char * replace (char *, char *, char *);
-int esta (char *, struct listaNodos *);
-int longitudListaDependencias (struct listaDependencias *);
-int longitudListaNodos (struct listaNodos *);
-struct listaNodos * eliminarElemTableaux (struct listaNodos *, char *);
-struct listaNodos * insertarElemParteTableaux (struct listaNodos *, struct listaNodos *);
-int interseccionVacia (struct listaNodos *, struct listaNodos *);
-int existenCandidatos (struct listaDependencias *, struct listaDependencias *, struct listaNodos *);
-struct listaDependencias * hacerCopiaTableaux (struct listaDependencias *);
-struct listaNodos * hacerCopiaL (struct listaNodos *);
-void escribirListaClavesFichero (struct listaDependencias *, char *);
-char * generarClaveSalida (struct listaDependencias *);
-struct listaDependencias * insertarClave (struct listaDependencias *, struct listaDependencias *);
-int contenida (struct listaNodos *, struct listaNodos *);
-void reglaK1Wastl (struct listaDependencias *, struct listaDependencias *, struct listaNodos *);
-void escribirDatosAlgoritmo (char *);
+int exists (char *, struct nodesList *);
+char * findElement (struct nodesList *, int);
+int sizeDepedenciesList (struct dependenciesList *);
+int sizeNodesList (struct nodesList *);
+struct nodesList * removeElemFromTableaux (struct nodesList *, char *);
+struct nodesList * insertElemToTableaux (struct nodesList *, struct nodesList *);
+int voidIntersection (struct nodesList *, struct nodesList *);
+int existCandidates (struct dependenciesList *, struct dependenciesList *, struct nodesList *);
+int isCandidate(struct dependenciesList *, struct dependenciesList *, struct nodesList *);
+struct dependenciesList * makeCopyTableaux (struct dependenciesList *);
+struct nodesList * makeCopyL (struct nodesList *);
+void saveKeysListToFile (struct dependenciesList *, char *);
+char * generateOutputKey (struct dependenciesList *);
+struct dependenciesList * insertKey (struct dependenciesList *, struct dependenciesList *);
+int includeIn (struct nodesList *, struct nodesList *);
+void wastlK1InferenceRule (struct dependenciesList *, struct dependenciesList *, struct nodesList *);
+void saveAlgorithmData (char *);
 
 
 // =====================================================

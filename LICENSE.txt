@@ -1,0 +1,3 @@
+WASTL KEYS METHOD.
+
+This software is distributed for researching task under GNU General Public License.
